@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>St. Lucia — Island Tour</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --sun:#FFD93D; --coral:#FF6B6B; --ocean:#1B8A5A; --teal:#22C880;
+  --lime:#06D6A0; --sky:#A8F0D0; --white:#FFFFFF; --ink:#1A2E25;
+  --sand:#FFF9EC; --muted:#5A8070;
+  --serif:'Pacifico',cursive; --sans:'Nunito',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--sans);background:var(--ocean);}
+
+/* SPLASH */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(160deg,#1B8A5A 0%,#22C880 45%,#48E4A0 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;transition:opacity .7s ease,visibility .7s ease;
+}
+#splash.gone{opacity:0;visibility:hidden;pointer-events:none;}
+.bubble{position:absolute;border-radius:50%;opacity:.15;animation:float linear infinite;}
+.bubble:nth-child(1){width:90px;height:90px;background:var(--sun);left:7%;top:72%;animation-duration:9s;}
+.bubble:nth-child(2){width:55px;height:55px;background:var(--white);left:20%;top:18%;animation-duration:6s;animation-delay:1s;}
+.bubble:nth-child(3){width:130px;height:130px;background:var(--coral);left:76%;top:58%;animation-duration:11s;animation-delay:2s;}
+.bubble:nth-child(4){width:45px;height:45px;background:var(--sun);left:62%;top:12%;animation-duration:7s;animation-delay:.5s;}
+.bubble:nth-child(5){width:100px;height:100px;background:white;left:87%;top:25%;animation-duration:10s;animation-delay:3s;}
+.bubble:nth-child(6){width:65px;height:65px;background:var(--sun);left:42%;top:82%;animation-duration:8s;animation-delay:1.5s;}
+.bubble:nth-child(7){width:35px;height:35px;background:var(--coral);left:4%;top:42%;animation-duration:5s;animation-delay:2.5s;}
+/* Piton silhouettes in splash background */
+.piton-left{position:absolute;bottom:0;left:25%;width:0;height:0;border-left:100px solid transparent;border-right:100px solid transparent;border-bottom:220px solid rgba(0,0,0,0.07);pointer-events:none;}
+.piton-right{position:absolute;bottom:0;left:38%;width:0;height:0;border-left:80px solid transparent;border-right:80px solid transparent;border-bottom:170px solid rgba(0,0,0,0.05);pointer-events:none;}
+@keyframes float{0%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-45px) rotate(180deg);}100%{transform:translateY(0) rotate(360deg);}}
+
+.splash-inner{text-align:center;position:relative;z-index:2;padding:2rem;}
+.splash-wave{font-size:3.5rem;display:inline-block;animation:wiggle 1.2s ease-in-out infinite;}
+@keyframes wiggle{0%,100%{transform:rotate(-12deg);}50%{transform:rotate(12deg);}}
+.splash-title{font-family:var(--serif);font-size:clamp(3rem,12vw,7.5rem);color:white;line-height:1;text-shadow:4px 5px 0 rgba(0,60,30,.22);animation:popIn .7s cubic-bezier(.175,.885,.32,1.275) .15s both;}
+.splash-sub{font-size:1rem;font-weight:800;color:var(--sun);letter-spacing:.18em;text-transform:uppercase;margin-top:.6rem;text-shadow:1px 1px 0 rgba(0,0,0,.15);animation:popIn .7s ease .5s both;}
+.splash-desc{font-size:.95rem;color:rgba(255,255,255,.92);margin-top:.9rem;font-weight:600;animation:popIn .6s ease .8s both;}
+.splash-badges{display:flex;gap:.65rem;justify-content:center;margin-top:1.25rem;flex-wrap:wrap;animation:popIn .6s ease 1.05s both;}
+.splash-badge{font-size:.72rem;font-weight:700;padding:.28rem .8rem;border-radius:20px;background:rgba(255,255,255,.22);color:white;border:1.5px solid rgba(255,255,255,.4);}
+.splash-btn{
+  margin-top:1.75rem;display:inline-flex;align-items:center;gap:.55rem;
+  font-family:var(--sans);font-size:1rem;font-weight:800;
+  background:var(--sun);color:var(--ink);border:none;
+  padding:.85rem 2.25rem;border-radius:50px;cursor:pointer;
+  box-shadow:0 5px 0 #c9a200,0 8px 20px rgba(0,0,0,.2);
+  transition:transform .15s,box-shadow .15s;
+  animation:popIn .7s cubic-bezier(.175,.885,.32,1.275) 1.3s both;
+}
+.splash-btn:hover{transform:translateY(-2px);box-shadow:0 7px 0 #c9a200,0 12px 24px rgba(0,0,0,.25);}
+.splash-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #c9a200;}
+@keyframes popIn{from{opacity:0;transform:scale(.8) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+
+/* APP */
+#app{width:100%;height:100vh;position:relative;}
+#map{position:absolute;inset:0;z-index:1;}
+
+/* TOP BAR */
+#topbar{
+  position:absolute;top:0;left:0;right:0;z-index:100;height:62px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(12px);
+  border-bottom:3px solid var(--sun);box-shadow:0 2px 18px rgba(0,0,0,.1);
+}
+.logo{font-family:var(--serif);font-size:1.45rem;color:var(--ocean);}
+.logo span{color:var(--coral);}
+.topnav{display:flex;gap:.2rem;}
+.nav-btn{
+  font-family:var(--sans);font-size:.72rem;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);background:none;border:none;cursor:pointer;
+  padding:.4rem .9rem;border-radius:20px;transition:all .2s;
+}
+.nav-btn:hover{background:var(--sky);color:var(--ink);}
+.nav-btn.active{background:var(--ocean);color:white;}
+
+/* SIDEBAR */
+#sidebar{
+  position:absolute;left:0;top:62px;bottom:0;z-index:50;
+  width:345px;background:rgba(255,255,255,.97);
+  backdrop-filter:blur(16px);border-right:3px solid var(--sun);
+  display:flex;flex-direction:column;
+  transform:translateX(-100%);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+  box-shadow:4px 0 28px rgba(0,0,0,.1);
+}
+#sidebar.open{transform:translateX(0);}
+.sidebar-tab{
+  position:absolute;left:345px;top:50%;transform:translateY(-50%);
+  width:28px;height:60px;
+  background:rgba(255,255,255,.97);border:3px solid var(--sun);border-left:none;
+  border-radius:0 12px 12px 0;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--ocean);font-size:.95rem;font-weight:800;
+  box-shadow:3px 0 10px rgba(0,0,0,.09);transition:background .2s;
+}
+.sidebar-tab:hover{background:var(--sun);}
+
+.view{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.view.active{display:flex;}
+
+.view-head{
+  padding:.9rem 1.25rem .7rem;border-bottom:2px dashed rgba(27,138,90,.2);
+  flex-shrink:0;background:linear-gradient(to right,#e0fff2,#fff9ec);
+}
+.view-head h2{font-family:var(--serif);font-size:1.35rem;color:var(--ocean);}
+.view-head p{font-size:.72rem;color:var(--muted);font-weight:600;margin-top:.15rem;}
+
+.filter-row{
+  display:flex;gap:.35rem;padding:.6rem 1.25rem;
+  border-bottom:1px solid rgba(0,0,0,.06);flex-shrink:0;flex-wrap:wrap;background:white;
+}
+.filter-btn{
+  font-family:var(--sans);font-size:.65rem;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;
+  padding:.28rem .65rem;border-radius:20px;
+  border:2px solid #e0e0e0;color:var(--muted);background:white;
+  cursor:pointer;transition:all .2s;
+}
+.filter-btn:hover{border-color:var(--teal);color:var(--teal);}
+.filter-btn.on{border-color:var(--ocean);background:var(--ocean);color:white;}
+
+.stop-list{flex:1;overflow-y:auto;}
+.stop-list::-webkit-scrollbar{width:4px;}
+.stop-list::-webkit-scrollbar-thumb{background:var(--sky);border-radius:4px;}
+
+.stop-card{
+  display:flex;align-items:flex-start;gap:.8rem;
+  padding:.8rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.05);
+  cursor:pointer;transition:background .15s;
+}
+.stop-card:hover{background:#f0fff8;}
+.stop-card.selected{background:#d8ffee;border-left:4px solid var(--ocean);padding-left:calc(1.25rem - 4px);}
+.stop-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0;margin-top:2px;box-shadow:0 2px 6px rgba(0,0,0,.15);}
+.stop-info{flex:1;min-width:0;}
+.stop-name{font-size:.87rem;font-weight:800;color:var(--ink);margin-bottom:.1rem;}
+.stop-tagline{font-size:.72rem;color:var(--muted);line-height:1.4;font-weight:600;}
+.stop-pill{display:inline-block;margin-top:.28rem;font-size:.58rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:.13rem .5rem;border-radius:20px;}
+
+/* DETAIL */
+#detail{
+  position:absolute;right:0;top:62px;bottom:0;z-index:50;
+  width:365px;background:rgba(255,255,255,.97);
+  backdrop-filter:blur(20px);border-left:3px solid var(--sun);
+  overflow-y:auto;transform:translateX(100%);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+  box-shadow:-4px 0 28px rgba(0,0,0,.1);
+}
+#detail.open{transform:translateX(0);}
+#detail::-webkit-scrollbar{width:4px;}
+#detail::-webkit-scrollbar-thumb{background:var(--sky);border-radius:4px;}
+
+#close-detail{
+  position:absolute;top:1rem;right:1rem;z-index:10;
+  width:36px;height:36px;border-radius:50%;
+  background:var(--coral);border:none;color:white;
+  font-size:1rem;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 0 #c94040,0 4px 10px rgba(0,0,0,.15);
+  transition:transform .15s;
+}
+#close-detail:hover{transform:scale(1.1);}
+#close-detail:active{transform:scale(.94);}
+
+.detail-hero{padding:1.5rem 1.25rem 1.1rem;position:relative;}
+.detail-num{position:absolute;top:.75rem;right:4.2rem;font-family:var(--serif);font-size:3rem;opacity:.07;color:var(--ink);line-height:1;}
+.detail-emoji{font-size:2rem;margin-bottom:.35rem;display:block;}
+.detail-cat{font-size:.6rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin-bottom:.35rem;}
+.detail-name{font-family:var(--serif);font-size:1.65rem;color:var(--ink);line-height:1.15;}
+.detail-tagline{font-size:.86rem;color:var(--muted);margin-top:.35rem;font-weight:600;font-style:italic;line-height:1.5;}
+
+.detail-meta{display:grid;grid-template-columns:1fr 1fr 1fr;margin:0 1.25rem 1.25rem;border-radius:14px;overflow:hidden;border:2px solid #f0f0f0;}
+.meta-cell{padding:.65rem .7rem;background:#fafafa;border-right:1px solid #f0f0f0;}
+.meta-cell:last-child{border-right:none;}
+.meta-cell .lbl{font-size:.56rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.18rem;}
+.meta-cell .val{font-size:.78rem;font-weight:700;color:var(--ink);}
+
+.detail-body{padding:0 1.25rem 2rem;}
+.detail-section{margin-bottom:1.25rem;}
+.detail-section h3{font-size:.62rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin-bottom:.55rem;display:flex;align-items:center;gap:.4rem;}
+.detail-section h3::after{content:'';flex:1;height:2px;border-radius:2px;background:#f0f0f0;}
+.detail-section p{font-size:.84rem;line-height:1.75;color:#444;font-weight:600;}
+.detail-section ul{list-style:none;}
+.detail-section li{font-size:.82rem;line-height:1.6;color:#444;font-weight:600;padding:.32rem 0 .32rem 1.25rem;border-bottom:1px dashed #f0f0f0;position:relative;}
+.detail-section li::before{content:'🌿';position:absolute;left:0;font-size:.68rem;top:.42rem;}
+.detail-section li:last-child{border-bottom:none;}
+
+/* ITINERARY */
+.scroll-wrap{flex:1;overflow-y:auto;}
+.scroll-wrap::-webkit-scrollbar{width:4px;}
+.scroll-wrap::-webkit-scrollbar-thumb{background:var(--sky);border-radius:4px;}
+.scroll-inner{padding:1rem 1.25rem 2rem;}
+.scroll-inner h2{font-family:var(--serif);font-size:1.35rem;color:var(--ocean);margin-bottom:.2rem;}
+.scroll-inner>p{font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:1.4rem;}
+.day-label{font-size:.62rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:white;background:var(--ocean);display:inline-block;padding:.22rem .8rem;border-radius:20px;margin-bottom:.8rem;margin-top:.4rem;}
+.it-item{display:flex;gap:.7rem;}
+.it-spine{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;}
+.it-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px;box-shadow:0 2px 4px rgba(0,0,0,.2);}
+.it-line{flex:1;width:2px;border-radius:2px;background:#e8e8e8;margin-top:3px;min-height:24px;}
+.it-body{flex:1;padding-bottom:.85rem;cursor:pointer;transition:transform .15s;}
+.it-body:hover{transform:translateX(3px);}
+.it-time{font-size:.63rem;color:var(--muted);font-weight:700;margin-bottom:.04rem;}
+.it-title{font-size:.87rem;font-weight:800;color:var(--ink);}
+.it-note{font-size:.72rem;color:var(--muted);margin-top:.1rem;line-height:1.45;font-weight:600;}
+.it-dur{display:inline-block;margin-top:.22rem;font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ocean);background:#e0fff2;padding:.1rem .45rem;border-radius:10px;}
+
+/* HISTORY */
+.hist-card{padding:.85rem 0;border-bottom:1px dashed rgba(0,0,0,.1);display:flex;gap:1rem;align-items:flex-start;}
+.hist-year{font-family:var(--serif);font-size:.76rem;color:var(--ocean);min-width:80px;padding-top:2px;flex-shrink:0;}
+.hist-title{font-size:.86rem;font-weight:800;color:var(--ink);margin-bottom:.28rem;}
+.hist-text{font-size:.76rem;color:#555;line-height:1.65;font-weight:600;}
+
+/* POPUP */
+.leaflet-popup-content-wrapper{background:white;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.15);border:2px solid var(--sun);}
+.leaflet-popup-tip{background:white;}
+.leaflet-popup-content{margin:10px 14px;font-family:var(--sans);}
+.popup-name{font-weight:800;font-size:.88rem;color:var(--ink);margin-bottom:.12rem;}
+.popup-cat{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
+
+/* category styles */
+.p-beach  {background:#DBEEFF;color:#0077B6;}
+.p-hike   {background:#D8F5E3;color:#1A7A4A;}
+.p-history{background:#FFE8D6;color:#7A4A0A;}
+.p-food   {background:#FFE0E8;color:#8A1A3A;}
+.p-dive   {background:#E0E8FF;color:#1A2A8A;}
+.num-beach  {background:#0096C7;color:white;}
+.num-hike   {background:#1A7A4A;color:white;}
+.num-history{background:#C87820;color:white;}
+.num-food   {background:#C8204A;color:white;}
+.num-dive   {background:#2040C8;color:white;}
+
+#map-hint{
+  position:absolute;bottom:1.75rem;left:50%;transform:translateX(-50%);
+  z-index:40;pointer-events:none;
+  font-family:var(--sans);font-size:.7rem;font-weight:700;
+  color:var(--ink);background:rgba(255,255,255,.93);
+  border:2px solid var(--sun);padding:.45rem 1.2rem;border-radius:30px;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;
+}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+  <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+  <div class="bubble"></div>
+  <div class="piton-left"></div>
+  <div class="piton-right"></div>
+  <div class="splash-inner">
+    <div class="splash-wave">⛰️</div>
+    <div class="splash-title">St. Lucia</div>
+    <div class="splash-sub">The Helen of the West Indies</div>
+    <div class="splash-desc">Volcanic peaks, coral reefs, rum & jungle waterfalls</div>
+    <div class="splash-badges">
+      <span class="splash-badge">🏖️ Beaches</span>
+      <span class="splash-badge">⛰️ The Pitons</span>
+      <span class="splash-badge">🤿 Diving</span>
+      <span class="splash-badge">🥃 Rum</span>
+      <span class="splash-badge">🌿 Rainforest</span>
+    </div>
+    <button class="splash-btn" onclick="enterSite()">🗺️ Explore the Island</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="map"></div>
+
+  <div id="topbar">
+    <div class="logo">St. <span>Lucia</span> 🌴</div>
+    <nav class="topnav">
+      <button class="nav-btn active" onclick="showView('stops')">📍 Stops</button>
+      <button class="nav-btn" onclick="showView('itinerary')">🗓️ Itinerary</button>
+      <button class="nav-btn" onclick="showView('history')">📜 History</button>
+    </nav>
+  </div>
+
+  <div id="sidebar" class="open">
+    <div class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()">◀</div>
+
+    <div class="view active" id="view-stops">
+      <div class="view-head">
+        <h2>Tour Stops 📍</h2>
+        <p>20 amazing spots across the island</p>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn on" onclick="setFilter(this,'all')">All</button>
+        <button class="filter-btn" onclick="setFilter(this,'beach')">🏖 Beach</button>
+        <button class="filter-btn" onclick="setFilter(this,'hike')">⛰️ Hiking</button>
+        <button class="filter-btn" onclick="setFilter(this,'history')">🏛 History</button>
+        <button class="filter-btn" onclick="setFilter(this,'food')">🥃 Food & Rum</button>
+        <button class="filter-btn" onclick="setFilter(this,'dive')">🤿 Diving</button>
+      </div>
+      <div class="stop-list" id="stop-list"></div>
+    </div>
+
+    <div class="view" id="view-itinerary">
+      <div class="scroll-wrap">
+        <div class="scroll-inner">
+          <h2>3-Day Itinerary 🗓️</h2>
+          <p>North to south — rainforest, Pitons, reef & rum</p>
+          <div id="it-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-history">
+      <div class="scroll-wrap">
+        <div class="scroll-inner">
+          <h2>Island History 📜</h2>
+          <p>From the Arawak to independence and beyond</p>
+          <div id="hist-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail">
+    <button id="close-detail">✕</button>
+    <div id="detail-content"></div>
+  </div>
+
+  <div id="map-hint">🗺️ Tap any marker to explore · 20 stops</div>
+</div>
+
+<script>
+const CAT_EMOJI  = {beach:'🏖️', hike:'⛰️', history:'🏛️', food:'🥃', dive:'🤿'};
+const CAT_LABEL  = {beach:'Beach', hike:'Hiking', history:'History', food:'Food & Rum', dive:'Diving'};
+const CAT_COLOR  = {beach:'#0096C7', hike:'#1A7A4A', history:'#C87820', food:'#C8204A', dive:'#2040C8'};
+const CAT_ACCENT = {beach:'#0077B6', hike:'#145A35', history:'#8A5010', food:'#8A1030', dive:'#102090'};
+
+const stops = [
+  {id:1,  name:"Gros Piton",                     cat:"hike",    lat:13.8047, lng:-61.0681, tagline:"St. Lucia's most iconic volcanic peak",            desc:"Gros Piton rises 798 metres from the sea and is a UNESCO World Heritage Site. The guided hike rewards with jaw-dropping 360° views over the island and Caribbean. One of the most dramatic hikes in the entire Caribbean.", tips:["A licensed guide is mandatory — arrange at the trailhead","Start before 7am to beat the heat","Bring at least 2 litres of water","Wear sturdy shoes — the trail is steep and rocky","On a clear day you can see Martinique from the summit"], hours:"Daily, depart 7am–11am", duration:"5–6 hrs", best:"Early morning"},
+  {id:2,  name:"Petit Piton",                     cat:"hike",    lat:13.8156, lng:-61.0711, tagline:"The steeper, wilder twin peak",                    desc:"Standing 743 metres tall, Petit Piton is technically more challenging than its twin and requires serious scrambling near the summit. Less visited, it offers a more adventurous experience and equally stunning views.", tips:["Requires a highly experienced guide","Ropes and scrambling involved near the top","Not recommended if you have a fear of heights","The views from the saddle between the Pitons are extraordinary"], hours:"By arrangement", duration:"6–7 hrs", best:"Early morning"},
+  {id:3,  name:"Anse Chastanet Beach",            cat:"beach",   lat:13.8400, lng:-61.0693, tagline:"Black-sand cove at the foot of the Pitons",        desc:"Anse Chastanet is one of the most celebrated beaches in the Caribbean — a dark volcanic sand cove framed by lush jungle and the twin Pitons. The coral reef just offshore makes it superb for snorkeling straight from the beach.", tips:["Snorkel gear available from the resort","Best snorkeling on the southern end","The Piton view from the waterline is the island's most famous vista","Free access via the main road"], hours:"Always open", duration:"2–4 hrs", best:"Morning"},
+  {id:4,  name:"Reduit Beach, Rodney Bay",        cat:"beach",   lat:14.0820, lng:-60.9534, tagline:"The island's most popular golden beach",           desc:"Reduit Beach in Rodney Bay is St. Lucia's longest and most social beach — a broad sweep of golden sand lined with beach bars, water sports operators, and the buzz of island life. The calm water is ideal for swimming and kayaking.", tips:["Rent water sports equipment from beach vendors","Spinnakers Beach Bar is legendary for Sunday jump-up parties","The beach is free and public along its full length"], hours:"Always open", duration:"2–3 hrs", best:"Afternoon"},
+  {id:5,  name:"Sugar Beach (Anse des Pitons)",   cat:"beach",   lat:13.8178, lng:-61.0672, tagline:"White-sand cove between the twin Pitons",          desc:"Arguably the most dramatic beach setting in the Caribbean. Sugar Beach is nestled in the valley between the two Pitons — white volcanic sand, impossibly blue water, and sheer green peaks on all sides. Day passes available for non-guests.", tips:["Day passes available at Viceroy Sugar Beach resort","Arrive by water taxi from Soufrière for the most dramatic entry","The underwater scenery is excellent","This is the classic postcard shot of St. Lucia"], hours:"Day passes from 9am", duration:"2–4 hrs", best:"Midday"},
+  {id:6,  name:"Sulphur Springs",                cat:"hike",    lat:13.8322, lng:-61.0511, tagline:"Drive-in volcano & natural mud baths",              desc:"The world's only 'drive-in volcano' — a vast steaming crater where you can walk in and observe active fumaroles, boiling mud pools, and vivid mineral deposits. The adjacent sulphur springs offer natural mud baths said to be amazing for skin.", tips:["Guided tour required — guides are incredibly knowledgeable","Don't wear good clothes — sulphur stains permanently","The smell of sulphur is strong — totally normal!","Combine with the Diamond Falls next door for a full day"], hours:"Daily 9am–5pm", duration:"1.5–2 hrs", best:"Midday"},
+  {id:7,  name:"Diamond Falls & Botanical Gardens",cat:"hike",  lat:13.8414, lng:-61.0494, tagline:"Rainbow mineral waterfall & lush gardens",          desc:"Diamond Falls is one of the most beautiful waterfalls in the Caribbean — a cascade of mineral-rich water that has stained the rocks vivid shades of yellow, orange, and green. The botanical gardens are lush and gorgeous. You can swim in the mineral baths!", tips:["Combine with Sulphur Springs next door","Swimwear recommended — bathe in the mineral pools","The gardens are gorgeous for photography","Go early to beat tour groups"], hours:"Mon–Sat 10am–5pm, Sun 10am–3pm", duration:"1.5–2 hrs", best:"Morning"},
+  {id:8,  name:"Pigeon Island National Park",    cat:"history", lat:14.0957, lng:-60.9528, tagline:"Ruins, beaches & panoramic fort views",             desc:"Connected to the mainland by a causeway, Pigeon Island is a National Landmark with ruins of an 18th-century British fort, two small beaches, and sweeping views over Rodney Bay. An essential mix of history and scenery.", tips:["The climb to Fort Rodney takes about 20 minutes","Views stretch to Martinique on clear days","Two small beaches are perfect for a post-hike swim","The park museum covers the island's naval history well","Pack a picnic — shady spots are plentiful"], hours:"Daily 9am–5pm", duration:"2–3 hrs", best:"Morning"},
+  {id:9,  name:"Rodney Bay Marina",              cat:"food",    lat:14.0788, lng:-60.9541, tagline:"The island's yachting hub & dining hotspot",        desc:"Rodney Bay Marina is one of the premier yachting marinas in the Eastern Caribbean and a fantastic place to eat, drink, and people-watch. Dozens of restaurants and bars line the waterfront, from casual fish shacks to sophisticated waterfront dining.", tips:["The Friday night jump-up at Gros Islet is unmissable","Barefoot by the Sea is famous for cocktails on the dock","Fresh catch of the day at any waterfront restaurant","Charter a yacht or catamaran for a day sail"], hours:"Always open", duration:"2–3 hrs", best:"Evening"},
+  {id:10, name:"Castries Central Market",        cat:"food",    lat:14.0101, lng:-60.9978, tagline:"The beating heart of island life & local food",     desc:"The Castries Central Market is the island's most vibrant hub — a covered market packed with fresh produce, local spices, handcrafts, and street food. The adjacent Vendor's Arcade sells local art and souvenirs. Saturday morning is the most lively time.", tips:["Saturday morning is the busiest and most atmospheric","Try the local cocoa tea — made from pure St. Lucian cacao","Pick up green seasoning, local hot sauce, and bay rum","The fish market across the road is fascinating at dawn"], hours:"Mon–Sat 6am–5pm", duration:"1–2 hrs", best:"Saturday morning"},
+  {id:11, name:"Anse La Raye Fish Fry",          cat:"food",    lat:13.9428, lng:-61.0425, tagline:"Friday night street party & fresh seafood feast",   desc:"Every Friday evening, the fishing village of Anse La Raye transforms into one of the most authentic local celebrations in the Caribbean. The entire main street becomes a fish fry — grilled lobster, fish, conch, and local sides, with live music and dancing.", tips:["Arrive between 7pm and 10pm","Cash only at most stalls","The grilled lobster is exceptional and very affordable","This is a genuinely local event — respectful participation welcomed"], hours:"Fridays from 6pm", duration:"2–3 hrs", best:"Friday evening"},
+  {id:12, name:"Soufrière Town",                 cat:"history", lat:13.8567, lng:-61.0573, tagline:"The old French colonial capital of St. Lucia",      desc:"Soufrière is the oldest town in St. Lucia, founded by the French in 1746. Its colourful wooden creole architecture, central square, Catholic church, and waterfront are steeped in colonial history. It's the gateway to the Pitons, sulphur springs, and Diamond Falls.", tips:["Waterfront is the best place to arrange Pitons boat trips","Try fresh fish at the market stalls near the dock","The central square on a Sunday morning is wonderfully peaceful","Most southern attractions are within 15 minutes"], hours:"Always open", duration:"1–2 hrs", best:"Morning"},
+  {id:13, name:"Marigot Bay",                    cat:"beach",   lat:13.9665, lng:-61.0245, tagline:"The most beautiful bay in the Caribbean",           desc:"Marigot Bay is a double-hurricane-hole harbour surrounded by steep hills covered in palms and tropical vegetation. It famously appeared in the 1967 film Doctor Doolittle. Today it's lined with luxury yachts and excellent restaurants perched above the water.", tips:["Take the free ferry across the bay","Doolittle's restaurant has the most romantic view on the island","Best visited at sunset for golden light","The inner bay is the most beautiful part","Small beach accessible by ferry on the far side"], hours:"Always open", duration:"1–2 hrs", best:"Sunset"},
+  {id:14, name:"Snorkeling at Anse Chastanet",   cat:"dive",    lat:13.8410, lng:-61.0700, tagline:"Marine reserve with spectacular shallow reef",      desc:"The marine reserve at Anse Chastanet is considered one of the best snorkeling and diving sites in St. Lucia. The reef begins in just 3 metres of water with exceptional visibility, sea turtles, rays, and abundant reef fish.", tips:["Scuba and snorkel gear rental available on the beach","Sea turtles are frequently seen here","Night dives are available and spectacular","The drop-off on the south side is dramatic for scuba"], hours:"Daily 8am–4pm", duration:"2–3 hrs", best:"Morning"},
+  {id:15, name:"Wreck of the Lesleen M",         cat:"dive",    lat:13.9428, lng:-61.0300, tagline:"Deliberately sunk freighter — an artificial reef",  desc:"The Lesleen M is a 56-metre freighter deliberately sunk in 1986 to create an artificial reef. Now encrusted with corals and sponges and home to extraordinary marine life, it sits in 18 metres of water and suits novice and experienced divers alike.", tips:["Arrange through dive shops in Anse La Raye or Soufrière","Penetration dive possible for experienced divers with a guide","The hull is covered in black and orange cup corals","Visibility typically 15–25 metres"], hours:"By arrangement", duration:"1–2 hrs", best:"Morning"},
+  {id:16, name:"Rainforest Aerial Tram",         cat:"hike",    lat:13.9356, lng:-61.0178, tagline:"Glide silently through the forest canopy",          desc:"The Rainforest Adventures aerial tram carries visitors on an open gondola through the St. Lucian rainforest canopy — a slow, silent journey with extraordinary views of the jungle, birds, and distant sea. Zip-lining and hiking trails also available.", tips:["Book in advance as it fills up fast","Early morning offers the best birdwatching","The zip line is faster and more thrilling","Binoculars are useful for spotting wildlife"], hours:"Daily 9am–3pm", duration:"2–3 hrs", best:"Morning"},
+  {id:17, name:"La Soufrière Heritage Tour",     cat:"history", lat:13.8317, lng:-61.0508, tagline:"Colonial estate & volcanic heritage",               desc:"The La Soufrière Estate has cultivated the rich volcanic land around the sulphur springs since the 18th century. The tour covers the history of the Devaux family, the colonial sugar industry, and the relationship between the plantations and enslaved people.", tips:["Guided tours give essential historical context","Combine with Sulphur Springs and Diamond Falls for a full day","An honest and important account of St. Lucia's plantation era"], hours:"Mon–Sat 9am–5pm", duration:"1 hr", best:"Morning"},
+  {id:18, name:"Fond Doux Plantation",           cat:"food",    lat:13.8103, lng:-61.0436, tagline:"Working cacao farm & spectacular creole cuisine",   desc:"Fond Doux is a historic 250-year-old plantation still producing cacao, coconut, and tropical fruit. The farm tour shows cacao production from tree to chocolate bar, followed by a lunch of traditional creole cooking made entirely from estate produce.", tips:["Book the farm-to-table lunch in advance — it's exceptional","The cacao tree-to-bar tour is fascinating for chocolate lovers","The grounds are lush and ideal for a slow morning","One of the best agro-tourism experiences in the Caribbean"], hours:"Daily 8am–5pm", duration:"2–3 hrs", best:"Morning"},
+  {id:19, name:"Dennery Seafood Friday",         cat:"food",    lat:13.9167, lng:-60.9167, tagline:"East coast authentic local fish fry",               desc:"Less known than the Anse La Raye fish fry, Dennery's Friday night festival on the rugged Atlantic east coast is a more local, less tourist-oriented experience. Fresh fish, conch, and saltfish accra are served with cold Piton beer to live soca music.", tips:["Less touristy than Anse La Raye — more authentic","The drive over the mountains is itself scenic","Arrive around 7–8pm for the full atmosphere","Piton beer is the local lager — ice cold and refreshing"], hours:"Fridays from 7pm", duration:"2–3 hrs", best:"Friday evening"},
+  {id:20, name:"St. Lucia Rum Distillery",       cat:"food",    lat:13.9000, lng:-61.0100, tagline:"Chairman's Reserve rum tour & tasting",             desc:"St. Lucia Distillers produces Bounty and the celebrated Chairman's Reserve rums at their Roseau Valley facility. The distillery tour covers the history of rum in St. Lucia, the production process, and ends with generous tasting sessions.", tips:["The Chairman's Reserve tour is outstanding","Book in advance — tours fill quickly","The aged Chairman's Reserve 1931 is extraordinary if available","Rum punch is the local cocktail — try it fresh at any bar","Combine with a visit to Marigot Bay afterward"], hours:"Mon–Fri 9am–4pm", duration:"1.5–2 hrs", best:"Morning"}
+];
+
+const itinerary = [
+  {day:1, time:"8:00 AM",  stopId:8,  note:"Start at Pigeon Island — fort ruins and views over Rodney Bay"},
+  {day:1, time:"11:00 AM", stopId:4,  note:"Swim and relax at Reduit Beach, the island's most social stretch"},
+  {day:1, time:"1:00 PM",  stopId:9,  note:"Lunch at the marina — fresh fish at a waterfront restaurant"},
+  {day:1, time:"3:30 PM",  stopId:16, note:"Aerial tram through the rainforest canopy — book ahead!"},
+  {day:1, time:"7:00 PM",  stopId:11, note:"Friday night? Anse La Raye fish fry for the most local night out 🎉"},
+  {day:2, time:"6:30 AM",  stopId:1,  note:"Early start for the Gros Piton hike — mandatory guide at trailhead"},
+  {day:2, time:"12:30 PM", stopId:5,  note:"Recover at Sugar Beach — arrive by water taxi for maximum drama"},
+  {day:2, time:"3:00 PM",  stopId:6,  note:"Walk into the volcano at Sulphur Springs and take a mud bath"},
+  {day:2, time:"4:30 PM",  stopId:7,  note:"Diamond Falls and the botanical gardens — the rainbow waterfall"},
+  {day:2, time:"7:00 PM",  stopId:12, note:"Dinner in Soufrière — fresh catch on the waterfront"},
+  {day:3, time:"8:00 AM",  stopId:18, note:"Fond Doux plantation — cacao farm tour and creole breakfast"},
+  {day:3, time:"10:30 AM", stopId:3,  note:"Snorkel the reef at Anse Chastanet — sea turtles and vivid coral 🐢"},
+  {day:3, time:"1:00 PM",  stopId:20, note:"Chairman's Reserve rum distillery tour and tasting 🥃"},
+  {day:3, time:"3:30 PM",  stopId:13, note:"Marigot Bay at sunset — take the ferry across and watch the light change"},
+  {day:3, time:"7:30 PM",  stopId:9,  note:"Final dinner at Rodney Bay Marina — cocktails on the dock 🌅"}
+];
+
+const history = [
+  {year:"Pre-1000 AD",    title:"Arawak Settlement",         text:"The island was first settled by the Arawak (Taíno) people, who called it 'Iouanalao' — Land of the Iguana. They were later displaced by the Caribs, who called it 'Hewanorra,' a name still used for the international airport."},
+  {year:"1499–1600s",     title:"European Discovery",         text:"Europeans first sighted St. Lucia around 1499. Early colonization attempts by both England and France repeatedly failed due to fierce Carib resistance. The island changed hands between the two powers 14 times over two centuries."},
+  {year:"1650s–1700s",    title:"French Colonial Era",        text:"France established the first successful settlement in the 1650s. The French introduced sugar cane, African enslaved labor, and built Soufrière as the island's capital in 1746. The plantation system defined the island's economy for generations."},
+  {year:"1778–1814",      title:"British Naval Wars",         text:"The British captured Pigeon Island as a strategic base in 1778, with Admiral Rodney using it to monitor the French fleet at Martinique. The Battle of the Saintes in 1782, launched from St. Lucia, was a decisive British naval victory."},
+  {year:"1814",           title:"British Colony",             text:"After the Napoleonic Wars, St. Lucia was permanently ceded to Britain. English became the official language, though the local Kwéyòl creole — a beautiful French-African blend — remained the language of the people and is still spoken today."},
+  {year:"1834",           title:"Emancipation",               text:"The Slavery Abolition Act freed enslaved people across British colonies in 1834. Formerly enslaved St. Lucians entered a cruel 'apprenticeship' period before full freedom in 1838. The plantation economy slowly gave way to smallholder farming."},
+  {year:"1900s",          title:"Crown Colony & World Wars",  text:"St. Lucia served as a strategic British base in both World Wars. The Vigie Peninsula housed American military installations during WWII. The banana industry gradually replaced sugar as the island's main export."},
+  {year:"1979",           title:"Independence 🎉",            text:"St. Lucia gained full independence from Britain on February 22, 1979. The island remains a Commonwealth realm. Sir John Compton, who had pushed for independence, became the first Prime Minister."},
+  {year:"1992 & 1979",    title:"Two Nobel Laureates 🏆",     text:"St. Lucia has produced two Nobel Prize winners — economist Sir Arthur Lewis (1979) and poet Derek Walcott (1992). No other country of comparable size has matched this extraordinary achievement."},
+  {year:"Present",        title:"Tourism & Identity",         text:"Today St. Lucia is one of the most celebrated Caribbean destinations, known for the Pitons, rum, coral reefs, and creole culture. The island carefully balances eco-tourism with development while maintaining a fierce sense of national identity."}
+];
+
+let activeFilter='all', selectedStop=null, map, sidebarOpen=true;
+
+function enterSite(){ document.getElementById('splash').classList.add('gone'); }
+
+function initMap(){
+  map = L.map('map', {center:[13.9094,-60.9789], zoom:11, zoomControl:false});
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+    attribution:'Tiles © Esri', maxZoom:19
+  }).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  stops.forEach(s => {
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="width:34px;height:34px;border-radius:50%;background:${CAT_COLOR[s.cat]};color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;font-family:'Nunito',sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);border:3px solid white;">${s.id}</div>`,
+      iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
+    });
+    const m = L.marker([s.lat,s.lng],{icon}).addTo(map);
+    m.bindPopup(`<div class="popup-name">${CAT_EMOJI[s.cat]} ${s.name}</div><div class="popup-cat" style="color:${CAT_COLOR[s.cat]}">${CAT_LABEL[s.cat]}</div>`);
+    m.on('click', ()=>openDetail(s));
+  });
+}
+
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('open',sidebarOpen);
+  document.getElementById('sidebar-tab').textContent=sidebarOpen?'◀':'▶';
+}
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['stops','itinerary','history'][i]===name));
+  if(!sidebarOpen) toggleSidebar();
+}
+
+document.getElementById('close-detail').addEventListener('click',()=>{
+  document.getElementById('detail').classList.remove('open');
+  selectedStop=null; renderStops();
+});
+
+function openDetail(stop){
+  selectedStop=stop; renderStops();
+  if(map) map.panTo([stop.lat,stop.lng],{animate:true,duration:0.6});
+  const c=CAT_COLOR[stop.cat], a=CAT_ACCENT[stop.cat];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="detail-hero" style="background:linear-gradient(135deg,${c}20,${c}08);border-bottom:3px dashed ${c}44;">
+      <div class="detail-num">${String(stop.id).padStart(2,'0')}</div>
+      <span class="detail-emoji">${CAT_EMOJI[stop.cat]}</span>
+      <div class="detail-cat" style="color:${a}">${CAT_LABEL[stop.cat]}</div>
+      <div class="detail-name">${stop.name}</div>
+      <div class="detail-tagline">${stop.tagline}</div>
+    </div>
+    <div class="detail-meta">
+      <div class="meta-cell"><div class="lbl">Duration</div><div class="val">${stop.duration}</div></div>
+      <div class="meta-cell"><div class="lbl">Best Time</div><div class="val">${stop.best}</div></div>
+      <div class="meta-cell"><div class="lbl">Hours</div><div class="val">${stop.hours}</div></div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section">
+        <h3 style="color:${a}">About</h3>
+        <p>${stop.desc}</p>
+      </div>
+      <div class="detail-section">
+        <h3 style="color:${a}">Local Tips</h3>
+        <ul>${stop.tips.map(t=>`<li>${t}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+  document.getElementById('detail').classList.add('open');
+}
+
+function renderStops(){
+  const list=activeFilter==='all'?stops:stops.filter(s=>s.cat===activeFilter);
+  document.getElementById('stop-list').innerHTML=list.map(s=>`
+    <div class="stop-card${selectedStop?.id===s.id?' selected':''}" onclick="openDetail(stops.find(x=>x.id===${s.id}))">
+      <div class="stop-num num-${s.cat}">${s.id}</div>
+      <div class="stop-info">
+        <div class="stop-name">${CAT_EMOJI[s.cat]} ${s.name}</div>
+        <div class="stop-tagline">${s.tagline}</div>
+        <span class="stop-pill p-${s.cat}">${CAT_LABEL[s.cat]}</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderItinerary(){
+  document.getElementById('it-list').innerHTML=[1,2,3].map(day=>`
+    <div style="margin-bottom:1.75rem;">
+      <div class="day-label">${['🌅','☀️','🌴'][day-1]} Day ${day}</div>
+      ${itinerary.filter(i=>i.day===day).map((item,idx,arr)=>{
+        const s=stops.find(x=>x.id===item.stopId);
+        return `<div class="it-item">
+          <div class="it-spine">
+            <div class="it-dot" style="background:${CAT_COLOR[s.cat]};"></div>
+            ${idx<arr.length-1?'<div class="it-line"></div>':''}
+          </div>
+          <div class="it-body" onclick="openDetail(stops.find(x=>x.id===${s.id}));showView('stops')">
+            <div class="it-time">${item.time}</div>
+            <div class="it-title">${CAT_EMOJI[s.cat]} ${s.name}</div>
+            <div class="it-note">${item.note}</div>
+            <span class="it-dur">${s.duration}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function renderHistory(){
+  document.getElementById('hist-list').innerHTML=history.map(h=>`
+    <div class="hist-card">
+      <div class="hist-year">${h.year}</div>
+      <div><div class="hist-title">${h.title}</div><div class="hist-text">${h.text}</div></div>
+    </div>`).join('');
+}
+
+function setFilter(btn,cat){
+  activeFilter=cat;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); renderStops();
+  const n=cat==='all'?stops.length:stops.filter(s=>s.cat===cat).length;
+  document.getElementById('map-hint').textContent=`🗺️ ${n} stop${n!==1?'s':''} · tap any marker`;
+}
+
+renderStops(); renderItinerary(); renderHistory();
+setTimeout(initMap, 100);
+</script>
+</body>
+</html>
