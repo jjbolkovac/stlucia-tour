@@ -192,25 +192,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:var(--sans);backgro
 .detail-section li::before{content:'🌿';position:absolute;left:0;font-size:.68rem;top:.42rem;}
 .detail-section li:last-child{border-bottom:none;}
 
-/* ITINERARY */
-.scroll-wrap{flex:1;overflow-y:auto;}
-.scroll-wrap::-webkit-scrollbar{width:4px;}
-.scroll-wrap::-webkit-scrollbar-thumb{background:var(--sky);border-radius:4px;}
-.scroll-inner{padding:1rem 1.25rem 2rem;}
-.scroll-inner h2{font-family:var(--serif);font-size:1.35rem;color:var(--ocean);margin-bottom:.2rem;}
-.scroll-inner>p{font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:1.4rem;}
-.day-label{font-size:.62rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:white;background:var(--ocean);display:inline-block;padding:.22rem .8rem;border-radius:20px;margin-bottom:.8rem;margin-top:.4rem;}
-.it-item{display:flex;gap:.7rem;}
-.it-spine{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;}
-.it-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px;box-shadow:0 2px 4px rgba(0,0,0,.2);}
-.it-line{flex:1;width:2px;border-radius:2px;background:#e8e8e8;margin-top:3px;min-height:24px;}
-.it-body{flex:1;padding-bottom:.85rem;cursor:pointer;transition:transform .15s;}
-.it-body:hover{transform:translateX(3px);}
-.it-time{font-size:.63rem;color:var(--muted);font-weight:700;margin-bottom:.04rem;}
-.it-title{font-size:.87rem;font-weight:800;color:var(--ink);}
-.it-note{font-size:.72rem;color:var(--muted);margin-top:.1rem;line-height:1.45;font-weight:600;}
-.it-dur{display:inline-block;margin-top:.22rem;font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ocean);background:#e0fff2;padding:.1rem .45rem;border-radius:10px;}
-
 /* HISTORY */
 .hist-card{padding:.85rem 0;border-bottom:1px dashed rgba(0,0,0,.1);display:flex;gap:1rem;align-items:flex-start;}
 .hist-year{font-family:var(--serif);font-size:.76rem;color:var(--ocean);min-width:80px;padding-top:2px;flex-shrink:0;}
@@ -279,7 +260,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:var(--sans);backgro
     <div class="logo">St. <span>Lucia</span> 🌴</div>
     <nav class="topnav">
       <button class="nav-btn active" onclick="showView('stops')">📍 Stops</button>
-      <button class="nav-btn" onclick="showView('itinerary')">🗓️ Itinerary</button>
       <button class="nav-btn" onclick="showView('history')">📜 History</button>
     </nav>
   </div>
@@ -301,16 +281,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:var(--sans);backgro
         <button class="filter-btn" onclick="setFilter(this,'dive')">🤿 Diving</button>
       </div>
       <div class="stop-list" id="stop-list"></div>
-    </div>
-
-    <div class="view" id="view-itinerary">
-      <div class="scroll-wrap">
-        <div class="scroll-inner">
-          <h2>3-Day Itinerary 🗓️</h2>
-          <p>North to south — rainforest, Pitons, reef & rum</p>
-          <div id="it-list"></div>
-        </div>
-      </div>
     </div>
 
     <div class="view" id="view-history">
@@ -431,7 +401,7 @@ function toggleSidebar(){
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['stops','itinerary','history'][i]===name));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['stops','history'][i]===name));
   if(!sidebarOpen) toggleSidebar();
 }
 
@@ -483,28 +453,6 @@ function renderStops(){
     </div>`).join('');
 }
 
-function renderItinerary(){
-  document.getElementById('it-list').innerHTML=[1,2,3].map(day=>`
-    <div style="margin-bottom:1.75rem;">
-      <div class="day-label">${['🌅','☀️','🌴'][day-1]} Day ${day}</div>
-      ${itinerary.filter(i=>i.day===day).map((item,idx,arr)=>{
-        const s=stops.find(x=>x.id===item.stopId);
-        return `<div class="it-item">
-          <div class="it-spine">
-            <div class="it-dot" style="background:${CAT_COLOR[s.cat]};"></div>
-            ${idx<arr.length-1?'<div class="it-line"></div>':''}
-          </div>
-          <div class="it-body" onclick="openDetail(stops.find(x=>x.id===${s.id}));showView('stops')">
-            <div class="it-time">${item.time}</div>
-            <div class="it-title">${CAT_EMOJI[s.cat]} ${s.name}</div>
-            <div class="it-note">${item.note}</div>
-            <span class="it-dur">${s.duration}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
-}
-
 function renderHistory(){
   document.getElementById('hist-list').innerHTML=history.map(h=>`
     <div class="hist-card">
@@ -521,7 +469,7 @@ function setFilter(btn,cat){
   document.getElementById('map-hint').textContent=`🗺️ ${n} stop${n!==1?'s':''} · tap any marker`;
 }
 
-renderStops(); renderItinerary(); renderHistory();
+renderStops(); renderHistory();
 setTimeout(initMap, 100);
 </script>
 </body>
